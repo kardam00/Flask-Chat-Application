@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block content %}
+<div id="room-container">
+  <h1 id="home-header">Flask Chat </h1>
+  <div id="room-subsection">
+    <h2 id="room-code-display">Room Code: <span>{{ room }}</span></h2>
+    <a href="/" id="leave-chat-btn">Leave the Chat</a>
+  </div>
+
+  <div id="chat-room-widget">
+    <div id="msgs-container">
+      <ul id="messages"></ul>
+      <div id="uploaded-files-container">
+        <!-- Display uploaded files here -->
+      </div>
+    </div>
+
+    <div id="message-box">
+      <input type="text" placeholder="Enter your message" id="message-input" name="message" class="extended-input"/>
+      <input type="file" id="file-input" name="file" accept="image/*, .pdf, .doc, .txt" />
+      <button type="button" id="send-btn">Send</button>
+      
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function handler() {
+    var socketio = io();
+
+    socketio.on("message", function (message) {
+      if (message.file) {
+        displayFileMessage(message);
+      } else {
+        createChatItem(message.message, message.sender);
+      }
+    });
+
+    socketio.on("connect", function () {
+      console.log("Connected to the server!");
+    });
+
+    socketio.on("file_path", function (data) {
+      updateDownloadButton(data.file_name, data.file_path);
+      displayFileMessage(data, data.sender); 
+    });
+
+    function createChatItem(message, sender) {
+        var messages = document.getElementById("messages");
+
+        if (sender === "") {
+            content = `<p class="member-activity">${message}</p>`;
+        } else {
+            var senderIsUser = sender === "{{ user }}";
+            var content = `
+                <li class="message-item ${senderIsUser ? "self-message-item" : "peer-message-item"}">
+                    <p>${message}</p>
+                    <small class="${senderIsUser ? "muted-text" : "muted-text-white"}">${new Date().toLocaleString()}</small>
+                </li>`;
+            console.log(`Message: ${message} | Sender: ${sender}`);
+        }
+
+        messages.innerHTML += content;
+    }
+
+    document.getElementById("send-btn").addEventListener("click", function () {
+      sendMessage();
+    });
+
+    document.getElementById("message-input").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+
+    document.getElementById("file-input").addEventListener("change", function (event) {
+      event.preventDefault();
+    });
+
+    function sendMessage() {
+      console.log('sendMessage function called');
+      var msgInput = document.getElementById("message-input");
+      var fileInput = document.getElementById("file-input");
+
+      if (msgInput.value === "" && fileInput.files.length === 0) return;
+
+      if (fileInput.files.length > 0) {
+        var file = fileInput.files[0];
+        sendFile(file)
+          .then(() => {
+            fileInput.value = "";
+          })
+          .catch(error => {
+            console.error("Error sending file:", error);
+          });
+      } else {
+        var msg = msgInput.value;
+        socketio.emit("message", { message: msg });
+      }
+
+      msgInput.value = "";
+    }
+
+    function sendFile(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      return new Promise((resolve, reject) => {
+        socketio.emit("file_upload", { file_name: file.name });
+
+        fetch("/upload_file", {
+          method: "POST",
+          body: formData,
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.status === "success") {
+              console.log(data.message);
+              resolve(); // Resolve the promise if file upload is successful
+            } else {
+              console.error("Unexpected server response:", data);
+              reject(data); // Reject the promise with the server response in case of an error
+            }
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            reject(error); // Reject the promise in case of a fetch error
+          });
+      });
+    }
+
+    function displayFileMessage(message, sender) {
+        console.log("Displaying file:", message.file_name);
+
+        if (!message.file_name) {
+            console.error("File name is undefined!");
+            return;
+        }
+
+        var messages = document.getElementById("messages");
+        var senderIsUser = sender === "{{ user }}";
+        var alignmentClass = senderIsUser ? "self-message-item" : "peer-message-item";
+
+        var content = `
+            <li class="message-item ${alignmentClass}">
+                <p><a href="${message.file_path}" class="uploaded-file-link" download>${message.file_name}</a></p>
+                <p class="muted-text">${new Date().toLocaleString()}</p>
+            </li>`;
+        
+        messages.innerHTML += content;
+        console.log(`File: ${message.file_name} | Sender: ${sender}`);
+    }
+
+
+    function updateDownloadButton(fileName, filePath) {
+        console.log("Updating download button for file:", fileName, "with path:", filePath);
+        var fileLinks = document.querySelectorAll('.uploaded-file-link');
+        
+        fileLinks.forEach(function (fileLink) {
+            if (fileLink.textContent.trim() === fileName.trim()) {
+                fileLink.href = filePath;
+            }
+        });
+    }
+
+    document.removeEventListener('DOMContentLoaded', handler);
+  });
+</script>
+{% endblock %}
