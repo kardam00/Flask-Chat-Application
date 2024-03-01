@@ -62,7 +62,7 @@ Follow these steps to run the Flask Chat Application locally:
 2. Navigate to the project directory:
 
    ```bash
-   cd Flask-Chat-Application
+   cd Flask-Chat-Application-main/Flask-Chat-Application-main
    ```
 
 3. Install the required dependencies:
