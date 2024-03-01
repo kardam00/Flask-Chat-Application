@@ -28,7 +28,7 @@ The Flask Chat Application is a real-time chat platform that allows users to joi
 The project is organized into the following directory structure:
 
 ```
-Room/
+Flask-Chat-Application/
 |-- Static/
 |--  |--  styles/
 |--  |--  |--  styles.css
@@ -62,7 +62,7 @@ Follow these steps to run the Flask Chat Application locally:
 2. Navigate to the project directory:
 
    ```bash
-   cd Flask-Chat-Application/Room
+   cd Flask-Chat-Application
    ```
 
 3. Install the required dependencies:
